@@ -188,11 +188,6 @@ async fn clean(project: SerializableProject) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-async fn pretty_size(size: u64) -> String {
-    kondo_lib::pretty_size(size)
-}
-
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -209,7 +204,7 @@ fn main() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![clean, read, pretty_size])
+        .invoke_handler(tauri::generate_handler![clean, read])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

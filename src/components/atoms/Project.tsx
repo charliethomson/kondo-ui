@@ -2,11 +2,6 @@ import reactUrl from "../../assets/react.svg";
 import styled from "@emotion/styled";
 import { CSSProperties, FC, ReactNode } from "react";
 
-import {
-  Project as TProject,
-  ProjectType,
-  useProjectStore,
-} from "../../stores/project.store";
 import { Paper } from "./Paper";
 import { Button } from "./Button";
 import { BeatLoader } from "react-spinners";
@@ -19,6 +14,14 @@ import { SBT } from "../logos/SBT";
 import { Unity } from "../logos/Unity";
 import { Unreal } from "../logos/Unreal";
 import { prettySize } from "../../util/prettySize";
+import {
+  ProjectType,
+  Project as TProject,
+  toggleSelected,
+  clean,
+} from "../../stores/project.slice";
+import { useAppDispatch, useAppSelector } from "../../stores";
+import { isAny, isFulfilled, isPending } from "../../util/loading";
 const IconPaths: Record<ProjectType, () => JSX.Element> = {
   Cargo: Rust,
   Node: Javascript,
@@ -87,26 +90,25 @@ interface ProjectProps {
 }
 
 export const Project: FC<ProjectProps> = ({ project }) => {
-  const { clean, cleanStatus } = useProjectStore((store) => ({
-    clean: store.clean,
-    cleanStatus: store.cleanStatus,
+  const dispatch = useAppDispatch();
+  const { cleanStatus } = useAppSelector((state) => ({
+    cleanStatus: state.projects.cleaned[project.identity],
   }));
-
-  const toggleSelected = useProjectStore((store) => store.toggleSelected);
-
   const name = project.path.split("/").at(-1);
-  const disabled = !project.hasArtifacts || cleanStatus === "pending";
+  const disabled =
+    !project.hasArtifacts || isAny(cleanStatus, isFulfilled, isPending);
   const artifactDirs = project.size.dirs.filter((dir) => dir.isArtifact);
   const IconComponent = IconPaths[project.projectType];
 
   const onCleanClicked = async () => {
     if (disabled) return;
-    clean!(project);
+    dispatch(clean([project.identity]));
   };
 
   const buttonContent = (() => {
-    if (cleanStatus === "pending")
+    if (isPending(cleanStatus))
       return <BeatLoader color="#00000080" size={"8px"} />;
+    if (isFulfilled(cleanStatus)) return cleanStatus.data;
     if (!project.hasArtifacts) return "No artifacts";
 
     return `Clean up (${prettySize(project.size.artifactSize)})`;
@@ -114,7 +116,9 @@ export const Project: FC<ProjectProps> = ({ project }) => {
 
   return (
     <ProjectContainer
-      onClick={() => !disabled && toggleSelected!(project)}
+      onClick={() => {
+        !disabled && dispatch(toggleSelected(project.identity));
+      }}
       selected={project.selected}
     >
       <ProjectHeader>
@@ -142,7 +146,10 @@ export const Project: FC<ProjectProps> = ({ project }) => {
         <Button
           disabled={disabled}
           style={{ fontSize: "12px" }}
-          onClick={onCleanClicked}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            onCleanClicked();
+          }}
         >
           {buttonContent}
         </Button>

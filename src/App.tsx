@@ -1,9 +1,9 @@
 import { Index } from "./components/views/Index";
 import { Projects } from "./components/views/Projects";
-import { useProjectStore } from "./stores/project.store";
+import { useAppSelector } from "./stores";
 
 function App() {
-  const status = useProjectStore((state) => state.status);
+  const status = useAppSelector((state) => state.projects.projects.status);
   return status !== "fulfilled" ? <Index /> : <Projects />;
 }
 

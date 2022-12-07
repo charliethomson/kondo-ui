@@ -7,7 +7,7 @@ export const SBT = () => (
     width="32px"
     height="32px"
     viewBox="0 0 257.333 147.833"
-    enable-background="new 0 0 257.333 147.833"
+    enableBackground="new 0 0 257.333 147.833"
   >
     <g id="guidelines" display="none">
       <line

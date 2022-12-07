@@ -1,5 +1,4 @@
 import { FC } from "react";
-import { getProjectSize, useProjectStore } from "../../stores/project.store";
 import { Project } from "../../components/atoms/Project";
 import styled from "@emotion/styled";
 import { FaChevronLeft, FaFolderPlus } from "react-icons/fa";
@@ -7,6 +6,9 @@ import { Paper } from "../atoms/Paper";
 import { Button } from "../atoms/Button";
 import { prettySize } from "../../util/prettySize";
 import { BeatLoader } from "react-spinners";
+import { useAppDispatch, useAppSelector } from "../../stores";
+import { isPending } from "../../util/loading";
+import { addSearchPath, clean, reset } from "../../stores/project.slice";
 
 const CONTAINER_PADDING = "2rem";
 const HEADER_FOOTER_HEIGHT = "3rem";
@@ -92,28 +94,34 @@ const IconButton: FC<IconButtonProps> = ({ type, onClick }) => {
 };
 
 export const Projects: FC = () => {
-  const { projects, searchPaths, cleanedSpace, addStatus } = useProjectStore(
-    (state) => ({
-      projects: state.projects,
-      searchPaths: state.searchPaths,
-      cleanedSpace: state.cleanedSpace,
-      addStatus: state.addStatus,
-    })
-  );
+  const dispatch = useAppDispatch();
+  const { projects, searchPaths, cleanedSpace } = useAppSelector((state) => ({
+    projects: state.projects.projects,
+    searchPaths: state.projects.searchPaths,
+    cleanedSpace: state.projects.cleanedSpace,
+  }));
 
-  const addFolder = useProjectStore((store) => store.addDirectory!);
-  const resetStore = useProjectStore((store) => store.reset!);
-  const cleanSelected = useProjectStore((store) => store.cleanSelected!);
-  const cleanAll = useProjectStore((store) => store.cleanAll!);
+  if (projects.status !== "fulfilled") return null;
 
-  const totalSpace = projects
+  const totalSpace = projects.data
     .map((project) => project.size.artifactSize)
     .reduce((a, b) => a + b, 0);
 
-  const selectedSize = projects
+  const selectedSize = projects.data
     .filter((p) => p.selected)
     .map((project) => project.size.artifactSize)
     .reduce((a, b) => a + b, 0);
+
+  const cleanSelected = () => {
+    const identities = projects.data
+      .filter((project) => project.selected)
+      .map((project) => project.identity);
+    dispatch(clean(identities));
+  };
+  const cleanAll = () => {
+    const identities = projects.data.map((project) => project.identity);
+    dispatch(clean(identities));
+  };
 
   return (
     <Container>
@@ -122,44 +130,50 @@ export const Projects: FC = () => {
           <IconButton
             type="FaChevronLeft"
             onClick={() => {
-              resetStore!();
+              dispatch(reset());
             }}
           />
-          {searchPaths.slice(0, 3).map((path) => (
-            <Text>{path}</Text>
-          ))}{" "}
+          {searchPaths
+            .slice(0, 3)
+            .map((path) =>
+              path.status === "fulfilled" ? (
+                <Text key={path.data}>{path.data}</Text>
+              ) : (
+                <BeatLoader />
+              )
+            )}{" "}
           {searchPaths.length > 3 ? (
             <Text>+{searchPaths.length - 3}</Text>
           ) : null}
         </HeaderSection>
         <HeaderSection>
-          {addStatus === "pending" ? (
+          {searchPaths.some((path) => isPending(path)) ? (
             <BeatLoader color="#fff80" />
           ) : (
             <IconButton
               type="FaFolderPlus"
               onClick={() => {
-                addFolder();
+                dispatch(addSearchPath());
               }}
             />
           )}
         </HeaderSection>
         <HeaderSeparator />
         <HeaderSection>
-          <Button onClick={() => cleanSelected()}>
+          <Button onClick={cleanSelected}>
             Clean Selected{" "}
             {selectedSize !== 0 ? (
               <span>({prettySize(selectedSize)})</span>
             ) : null}
           </Button>
-          <Button onClick={() => cleanAll()}>Clean All</Button>
+          <Button onClick={cleanAll}>Clean All</Button>
         </HeaderSection>
       </HeaderContainer>
       <ContentContainer>
-        {projects
-          .sort((a, b) => getProjectSize(b) - getProjectSize(a))
+        {[...projects.data]
+          .sort((a, b) => b.size.artifactSize - a.size.artifactSize)
           .map((project) => (
-            <Project key={project.path} project={project} />
+            <Project key={project.identity} project={project} />
           ))}
       </ContentContainer>
       {totalSpace !== 0 ? (

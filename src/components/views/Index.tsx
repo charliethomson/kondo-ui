@@ -3,7 +3,8 @@ import { appWindow, LogicalSize } from "@tauri-apps/api/window";
 import { useEffect } from "react";
 import { PropagateLoader } from "react-spinners";
 import finderUrl from "../../assets/images/finder.png";
-import { useProjectStore } from "../../stores/project.store";
+import { useAppDispatch, useAppSelector } from "../../stores";
+import { fetchProjects } from "../../stores/project.slice";
 
 const Container = styled.div<{ disabled?: boolean }>`
   width: 100vw;
@@ -17,8 +18,9 @@ const Container = styled.div<{ disabled?: boolean }>`
 `;
 
 export const Index = () => {
-  const fetchProjects = useProjectStore((store) => store.fetch);
-  const status = useProjectStore((store) => store.status);
+  const dispatch = useAppDispatch();
+
+  const status = useAppSelector((state) => state.projects.projects.status);
 
   useEffect(() => {
     appWindow.setSize(new LogicalSize(280, 180));
@@ -28,15 +30,12 @@ export const Index = () => {
     };
   }, []);
 
-  useEffect(() => console.log(status), [status]);
-
   const disabled = status !== "idle" && status !== "rejected";
 
   const handleClick = () => {
     if (disabled) return;
-    fetchProjects!();
+    dispatch(fetchProjects());
   };
-
   return (
     <Container onClick={handleClick} disabled={disabled}>
       {status === "pending" ? (
