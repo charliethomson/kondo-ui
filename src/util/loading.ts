@@ -63,7 +63,6 @@ export const mapLoading = <T = any, R = any>(
   loading: Loading<T>,
   f: (t?: T) => R
 ) => {
-  console.log(isFulfilled(loading));
   return isFulfilled(loading) ? makeFulfilled(f(loading.data)) : loading;
 };
 export const mapLoadingErr = <E = any, R = any>(
@@ -71,6 +70,27 @@ export const mapLoadingErr = <E = any, R = any>(
   f: (e?: E) => R
 ) => {
   return isRejected(loading) ? makeRejected(f(loading.error)) : loading;
+};
+
+export const joinLoading = <X extends any, Y extends any>(
+  a: Loading<Y[]>,
+  b: Loading<X>,
+  f: (t?: X) => Y[],
+  joiner: null | ((a: Y[], b: Y[]) => Y[]) = null
+) => {
+  const b2: Loading<Y[]> = mapLoading(b, f);
+
+  if (!isFulfilled(b2)) return b2;
+  if (!isFulfilled(a)) return b2;
+
+  if (joiner === null) return makeFulfilled([...a.data, ...b2.data]);
+
+  return makeFulfilled(joiner(a.data, b2.data));
+};
+
+export const replaceLoading = <T extends any>(loading: Loading<T>, data: T) => {
+  if (isFulfilled(loading)) return makeFulfilled(data);
+  return loading;
 };
 
 type LoadingMatcher = (action: PayloadAction<any, string>) => boolean;

@@ -1,27 +1,16 @@
-import {
-  createAsyncThunk,
-  createSlice,
-  Draft,
-  PayloadAction,
-  SliceCaseReducers,
-} from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import uniqBy from "lodash-es/uniqBy";
 import { RootState } from ".";
-import {
-  cleanMany,
-  cleanProject,
-  ProjectsAndPaths,
-  promptFileSelect,
-} from "../api";
-import { getIdentity, Identity } from "../util/identity";
+import { cleanMany, ProjectsAndPaths, promptFileSelect } from "../api";
+import { generateIdentities, getIdentity, Identity } from "../util/identity";
 import {
   isFulfilled,
+  joinLoading,
   Loading,
-  LoadingStatus,
   makeFulfilled,
   makeIdle,
   makeLoadingMatcher,
   makePending,
-  makeRejected,
   mapLoading,
 } from "../util/loading";
 
@@ -71,18 +60,22 @@ const initialState: ProjectState = {
   count: makeFulfilled("0"),
 };
 
+export const populateProjects = (projects: Project[]): Promise<Project[]> => {
+  return generateIdentities(
+    projects.map((p) => ({
+      ...p,
+      selected: false,
+      hasArtifacts: p.size.artifactSize !== 0,
+    })),
+    (project) => project.path
+  );
+};
+
 export const fetchProjects = createAsyncThunk("projects/fetch", async () => {
   const { projects, searchPaths } = await promptFileSelect();
 
   return {
-    projects: await Promise.all(
-      projects.map(async (p) => ({
-        ...p,
-        selected: false,
-        hasArtifacts: p.size.artifactSize !== 0,
-        identity: await getIdentity(p.path),
-      }))
-    ),
+    projects: await populateProjects(projects),
     searchPaths,
   };
 });
@@ -118,6 +111,25 @@ export const projectsSlice = createSlice({
       state.projects.data = state.projects.data.map((p) =>
         p.identity === payload ? { ...p, selected: !p.selected } : p
       );
+    },
+    addProjects(state, { payload }: PayloadAction<Loading<ProjectsAndPaths>>) {
+      console.log(state.projects.status);
+      state.projects = mapLoading(
+        joinLoading(
+          state.projects,
+          payload,
+          (payload?: ProjectsAndPaths) => payload?.projects ?? []
+        ),
+        (projects) => uniqBy(projects, (project) => project.identity)
+      );
+      if (isFulfilled(payload))
+        state.searchPaths = uniqBy(
+          [
+            ...state.searchPaths,
+            ...payload.data.searchPaths.map(makeFulfilled),
+          ],
+          (path) => (isFulfilled(path) ? path.data : path)
+        );
     },
   },
   extraReducers: (builder) =>
@@ -156,6 +168,6 @@ export const projectsSlice = createSlice({
       ),
 });
 
-export const { reset, toggleSelected } = projectsSlice.actions;
+export const { reset, toggleSelected, addProjects } = projectsSlice.actions;
 
 export default projectsSlice.reducer;

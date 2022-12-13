@@ -7,7 +7,7 @@
     "withGlobalTauri": true
   },
   "package": {
-    "productName": "kondo-ui",
+    "productName": "Kondo",
     "version": "0.0.0"
   },
   "tauri": {

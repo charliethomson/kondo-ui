@@ -122,7 +122,7 @@ export const Project: FC<ProjectProps> = ({ project }) => {
       selected={project.selected}
     >
       <ProjectHeader>
-        <Name>{name}</Name>
+        <Name title={name}>{name}</Name>
         <IconContainer>
           <IconComponent />
         </IconContainer>

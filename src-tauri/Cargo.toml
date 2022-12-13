@@ -21,6 +21,15 @@ window-vibrancy = "0.3.2"
 kondo-lib = "0.2.0"
 lazy_static = "1.4.0"
 shellexpand = "3.0.0"
+dirs = "4.0.0"
+figment = {version="0.10.8",features= ["json"] }
+log = "0.4"
+fern = "0.6"
+chrono = "0.4.23"
+
+[dependencies.rustbreak]
+version = "2"
+features = ["ron_enc"]
 
 [features]
 # by default Tauri runs in production mode

@@ -2,17 +2,16 @@ import { configureStore } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import type { TypedUseSelectorHook } from "react-redux";
 import projectsReducer from "./project.slice";
+import preferencesReducer from "./preferences.slice";
 
 export const store = configureStore({
   reducer: {
     projects: projectsReducer,
+    preferences: preferencesReducer,
   },
 });
-// Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>;
-// Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}
 export type AppDispatch = typeof store.dispatch;
-
-// Use throughout your app instead of plain `useDispatch` and `useSelector`
+export type AppSelector = TypedUseSelectorHook<RootState>;
 export const useAppDispatch: () => AppDispatch = useDispatch;
-export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+export const useAppSelector: AppSelector = useSelector;

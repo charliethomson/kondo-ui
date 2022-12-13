@@ -9,3 +9,12 @@ export async function getIdentity(context: string): Promise<Identity> {
     .join("");
   return hashHex;
 }
+
+export async function generateIdentities<T extends object>(
+  ts: T[],
+  withContext: (t: T) => string
+): Promise<(T & { identity: string })[]> {
+  return await Promise.all(
+    ts.map(async (t) => ({ ...t, identity: await getIdentity(withContext(t)) }))
+  );
+}
