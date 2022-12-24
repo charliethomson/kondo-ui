@@ -1,21 +1,13 @@
 use std::{
-    cell::{Cell, RefCell},
-    io::Write,
-    path::PathBuf,
-    str::FromStr,
-    sync::{Arc, RwLock},
+    fs::{File, OpenOptions},
+    path::Path,
 };
 
-use dirs::{config_dir, home_dir};
-use figment::{
-    providers::{Format, Json},
-    value::{Dict, Map},
-    Figment, Metadata, Profile, Provider, Source,
-};
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
-use crate::{db::DatabaseBuilder, BASE_PATH, DATA_PATH, USER_CONFIG_PATH};
+use crate::{apply_glass, USER_CONFIG_PATH};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct KondoConfig {
@@ -28,44 +20,53 @@ impl Default for KondoConfig {
 }
 
 impl KondoConfig {
-    pub fn get() -> Self {
-        DatabaseBuilder::new().open().get_config().unwrap()
-    }
-    pub fn set(&self) {
-        DatabaseBuilder::new().open().put_config(&self)
+    fn set_default() -> Self {
+        let s = Self::default();
+        s.set();
+        return s;
     }
 
-    pub fn do_update(&self, app: AppHandle) {
-        if (self.enable_glass) {
-            for window in app.windows().iter() {}
+    pub fn get() -> Self {
+        if !Path::new(&*USER_CONFIG_PATH).exists() {
+            return Self::set_default();
+        }
+
+        let f = File::open(&*USER_CONFIG_PATH).unwrap();
+
+        match serde_json::from_reader(f) {
+            Ok(this) => {
+                info!("Read config from {:#?}", *USER_CONFIG_PATH);
+                this
+            }
+            Err(e) => {
+                warn!("Failed to read config from {:#?}: {}", *USER_CONFIG_PATH, e);
+                Self::set_default()
+            }
+        }
+    }
+    pub fn set(&self) {
+        let f = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(&*USER_CONFIG_PATH)
+            .unwrap();
+
+        match serde_json::to_writer_pretty(f, self) {
+            Ok(()) => {
+                info!("Config written to {:#?}", *USER_CONFIG_PATH);
+            }
+            Err(e) => {
+                warn!("Failed to write config to {:#?}: {}", *USER_CONFIG_PATH, e);
+            }
         }
     }
 
-    pub fn new() -> Self {
-        let mut figment = Figment::new()
-            .merge(Json::file(&*USER_CONFIG_PATH))
-            .merge(DatabaseConfigProvider());
-
-        let cfg: KondoConfig = figment.extract().unwrap_or_default();
-        cfg.set();
-        cfg
-    }
-}
-struct DatabaseConfigProvider();
-impl Provider for DatabaseConfigProvider {
-    fn metadata(&self) -> Metadata {
-        Metadata::named("Local database config")
-            .source(Source::File(PathBuf::from_str(&*DATA_PATH).unwrap()))
-    }
-
-    fn data(&self) -> Result<Map<Profile, Dict>, figment::Error> {
-        let profile = Profile::new("localdb");
-        let cfg =
-            serde_json::to_string(&DatabaseBuilder::new().open().get_config().unwrap()).unwrap();
-
-        let mut map = Map::new();
-
-        map.insert(profile, serde_json::de::from_str(&cfg).unwrap());
-        Ok(map)
+    pub fn do_update(&self, app: AppHandle) {
+        if self.enable_glass {
+            for (_label, window) in app.windows().iter() {
+                // todo; handle error
+                apply_glass(window).unwrap();
+            }
+        }
     }
 }

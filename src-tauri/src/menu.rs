@@ -1,11 +1,11 @@
 use tauri::{
-    api::dialog, AboutMetadata, App, CustomMenuItem, Manager, Menu, MenuItem, Submenu, Window,
+    api::dialog, AboutMetadata, CustomMenuItem, Manager, Menu, MenuItem, Submenu, Window,
     WindowBuilder,
 };
 
 use crate::{
     apply_glass,
-    command::{path_userlocal, scan_many, ReadResponse},
+    commands::{path_userlocal, scan_many, ReadResponse},
     event::Event,
 };
 

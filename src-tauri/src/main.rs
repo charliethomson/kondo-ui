@@ -2,29 +2,22 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
-mod command;
+mod commands;
 mod config;
-mod db;
 mod event;
 mod menu;
+mod project;
 
-use std::{
-    error::Error,
-    fs::{self, canonicalize, read_dir, FileType},
-    io,
-    path::PathBuf,
-    str::FromStr,
-};
+use std::{fs, io};
 
 use config::KondoConfig;
-use kondo_lib::{path_canonicalise, scan, Project, ProjectSize, ProjectType};
 use lazy_static::lazy_static;
+use log::info;
 use menu::{get_menu, KondoMenuItem};
-use serde::{Deserialize, Serialize};
-use tauri::{api::dialog, App, Manager, Window};
+use tauri::{App, Manager, Window};
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
-use crate::command::{clean, get_config, put_config, read};
+use crate::commands::*;
 
 lazy_static! {
     pub static ref BASE_PATH: String = format!("{}/Kondo", dirs::data_dir().unwrap().display());
@@ -88,7 +81,9 @@ fn setup_dirs() -> io::Result<()> {
 }
 
 fn main() {
+    setup_logger().expect("Failed to set up logging");
     setup_dirs().expect("Failed to create directories");
+    info!("Starting...");
     tauri::Builder::default()
         .menu(get_menu())
         .on_menu_event(|event| {

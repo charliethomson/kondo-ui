@@ -101,6 +101,8 @@ export const Projects: FC = () => {
     cleanedSpace: state.projects.cleanedSpace,
   }));
 
+  console.log(projects);
+
   if (projects.status !== "fulfilled") return null;
 
   const totalSpace = projects.data

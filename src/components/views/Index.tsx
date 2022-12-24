@@ -37,7 +37,7 @@ export const Index = () => {
     dispatch(fetchProjects());
   };
   return (
-    <Container onClick={handleClick} disabled={disabled}>
+    <Container onClick={handleClick} disabled={disabled} title={status}>
       {status === "pending" ? (
         <PropagateLoader color="#fff" />
       ) : (

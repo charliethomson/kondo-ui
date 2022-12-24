@@ -9,7 +9,7 @@ body,
 }
 
 * {
-  font-family: "SF Pro";
+  font-family: "SF Pro" "Source Sans";
 }
 /* width */
 ::-webkit-scrollbar {

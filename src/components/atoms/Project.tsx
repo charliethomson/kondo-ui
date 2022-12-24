@@ -90,11 +90,13 @@ interface ProjectProps {
 }
 
 export const Project: FC<ProjectProps> = ({ project }) => {
+
   const dispatch = useAppDispatch();
   const { cleanStatus } = useAppSelector((state) => ({
     cleanStatus: state.projects.cleaned[project.identity],
   }));
-  const name = project.path.split("/").at(-1);
+  const parts = project.path.split("/");
+  const name = parts[parts.length-1];
   const disabled =
     !project.hasArtifacts || isAny(cleanStatus, isFulfilled, isPending);
   const artifactDirs = project.size.dirs.filter((dir) => dir.isArtifact);

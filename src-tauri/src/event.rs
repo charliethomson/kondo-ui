@@ -2,9 +2,7 @@
 // kondo://add_projects/rejected
 // kondo://add_projects/pending
 
-use tauri::{App, Manager};
-
-use crate::command::ReadResponse;
+use crate::commands::ReadResponse;
 
 #[derive(Debug, Clone)]
 pub enum Event {

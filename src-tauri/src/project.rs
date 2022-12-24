@@ -1,19 +1,9 @@
-use std::{
-    error::Error,
-    fs::{self, canonicalize, read_dir, FileType},
-    io,
-    path::PathBuf,
-    str::FromStr,
-};
+use std::path::PathBuf;
 
-use dirs::home_dir;
-use kondo_lib::{path_canonicalise, scan, Project, ProjectSize, ProjectType};
-use lazy_static::lazy_static;
+use kondo_lib::{Project, ProjectSize, ProjectType};
 use serde::{Deserialize, Serialize};
-use tauri::{api::dialog, App, Manager, Window};
-use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
-use crate::config::KondoConfig;
+use crate::commands::path_userlocal;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SerializableProjectType {
@@ -116,74 +106,4 @@ impl From<SerializableProject> for Project {
             path: PathBuf::from(shellexpand::tilde(&p.path).to_string()),
         }
     }
-}
-
-#[derive(Serialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ReadResponse {
-    pub projects: Vec<SerializableProject>,
-    pub search_paths: Vec<String>,
-}
-
-pub fn path_userlocal(path: String) -> String {
-    if path.starts_with(home_dir().unwrap().to_str().unwrap()) {
-        path.replace(home_dir().unwrap().to_str().unwrap(), "~")
-    } else {
-        path
-    }
-}
-
-#[tauri::command]
-pub async fn read() -> Result<ReadResponse, String> {
-    match dialog::blocking::FileDialogBuilder::new().pick_folders() {
-        Some(p) => {
-            let search_paths = p
-                .iter()
-                .map(|pb| pb.as_os_str().to_string_lossy().to_string())
-                .map(path_userlocal)
-                .collect::<Vec<_>>();
-            let projects = scan_many(p);
-            Ok(ReadResponse {
-                projects,
-                search_paths,
-            })
-        }
-        None => Err("Pick aborted".into()),
-    }
-}
-
-pub fn scan_many(ps: Vec<PathBuf>) -> Vec<SerializableProject> {
-    ps.into_iter()
-        .flat_map(|p| scan(&p))
-        .map(SerializableProject::from)
-        .collect::<Vec<SerializableProject>>()
-}
-
-#[tauri::command]
-pub async fn clean(project: SerializableProject) -> Result<(), String> {
-    let project = Project::from(project);
-    for artifact_dir in project
-        .artifact_dirs()
-        .iter()
-        .copied()
-        .map(|ad| project.path.join(ad))
-        .filter(|ad| ad.exists())
-    {
-        if let Err(e) = fs::remove_dir_all(&artifact_dir) {
-            return Err(e.to_string());
-        }
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub fn put_config(app_handle: tauri::AppHandle, preferences: KondoConfig) {
-    preferences.set();
-    let new_prefs = KondoConfig::get();
-    new_prefs.do_update(app_handle);
-}
-
-#[tauri::command]
-pub fn get_config() -> KondoConfig {
-    KondoConfig::get()
 }
